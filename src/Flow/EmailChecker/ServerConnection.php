@@ -40,7 +40,7 @@ class ServerConnection
 
     protected $address;
 
-    public function __construct(Connection $connection = null, $domain, $user, callable $logger = null)
+    public function __construct(Connection $connection = null, $domain, $user, $logger = null)
     {
         $this->connection = $connection;
         $this->domain = $domain;

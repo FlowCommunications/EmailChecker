@@ -37,7 +37,7 @@ class ConnectionPool
      */
     protected $queuer;
 
-    function __construct(LoopInterface $loop, $fromDomain, $fromUser, callable $queuer, callable $logger = null)
+    function __construct(LoopInterface $loop, $fromDomain, $fromUser, $queuer, $logger = null)
     {
         $this->loop = $loop;
         $this->fromDomain = $fromDomain;
