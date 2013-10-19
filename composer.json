@@ -1,0 +1,20 @@
+{
+    "name": "flow/email-checker",
+    "description": "Check if email addresses exist on a mail server over SMTP using ReactPHP's famous non-blocking event loop",
+    "require": {
+        "react/react": "0.3.*"
+    },
+		"autoload": {
+			"psr-0": {
+				"Flow\\EmailChecker": "src/"
+			}
+		},
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Stephen Frank",
+            "email": "stephen@flowsa.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}
