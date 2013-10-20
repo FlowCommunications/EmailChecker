@@ -49,11 +49,11 @@ class ServerConnection
         $this->user = $user;
         $this->logger = $logger;
 
-        $connection->on('data', array($this, 'logReceived'));
-
-        $connection->on('data', array($this, 'buffer'));
-
-        $connection->on('close', array($this, 'onClose'));
+        if ($connection) {
+            $connection->on('data', array($this, 'logReceived'));
+            $connection->on('data', array($this, 'buffer'));
+            $connection->on('close', array($this, 'onClose'));
+        }
     }
 
     public function buffer($data)
