@@ -192,7 +192,10 @@ class ServerConnection
 
         $this->setState(static::STATE_ASKING);
 
-        $this->send("RCPT TO: <" . $email->getEmail() . ">\r\n")->then(function ($data) use ($self, $email) {
+        $this->write("RCPT TO: <" . $email->getEmail() . ">\r\n")->promiseMessage()->then(function ($data) use (
+                $self,
+                $email
+            ) {
                 $email->setRaw($data);
                 $self->unsetProcessing($email);
                 $self->ask();
@@ -201,10 +204,9 @@ class ServerConnection
     }
 
     /**
-     * @param $data
      * @return \React\Promise\DeferredPromise
      */
-    public function send($data)
+    public function promiseMessage()
     {
         $deferred = new Deferred();
 
@@ -214,8 +216,6 @@ class ServerConnection
             }
         );
 
-        $this->write($data);
-
         return $deferred->promise();
     }
 
@@ -224,6 +224,8 @@ class ServerConnection
         $this->logSent($str);
 
         $this->connection->write($str);
+
+        return $this;
     }
 
     public function logSent($data)
@@ -246,34 +248,24 @@ class ServerConnection
 
     public function sayHello()
     {
+        $self = $this;
+
         $this->setState(static::STATE_GREETING);
 
-        $self = $this;
-        $connection = $this->connection;
-
-        $deferred = new Deferred();
-
-        $this->connection->once('data',
-            function ($data, $conn) use ($deferred) {
-                $deferred->resolve($data);
-            }
-        );
-
-        $deferred->promise()
-            ->then(function ($data) use ($connection, $self) {
-                    return $self->send("HELO " . $self->getDomain() . "\r\n");
+        $this->promiseMessage()
+            ->then(function ($data) use ($self) {
+                    return $self->write("HELO " . $self->getDomain() . "\r\n")->promiseMessage();
+                }
+            )->then(function ($data) use ($self) {
+                    return $self->write("MAIL FROM: <" . $self->getUser() . "@" . $self->getDomain() . ">\r\n"
+                    )->promiseMessage();
                 }
             )
-            ->then(function ($data) use ($connection, $self) {
-                    return $self->send("MAIL FROM: <" . $self->getUser() . "@" . $self->getDomain() . ">\r\n");
-                }
-            )
-            ->then(function ($data) use ($connection, $self) {
+            ->then(function ($data) use ($self) {
                     $self->setState(ServerConnection::STATE_READY);
                     $self->ask();
                 }
             );
-
     }
 
     /**
