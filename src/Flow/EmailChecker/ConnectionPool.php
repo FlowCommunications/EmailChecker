@@ -131,7 +131,6 @@ class ConnectionPool
         $connection = $this->resolveConnection($domain);
 
         $connection->add($mailboxUser);
-        $connection->run();
     }
 
     public function resolveConnection($domain)
@@ -175,8 +174,6 @@ class ConnectionPool
                 $conn = new Connection($stream, $this->loop);
 
                 $serverConnection = new ServerConnection($conn, $this->fromDomain, $this->fromUser, $this->logger);
-
-                $conn->on('data', array($serverConnection, 'logReceived'));
 
                 $self = $this;
 

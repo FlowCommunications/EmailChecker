@@ -46,6 +46,9 @@ class ServerConnection
         $this->domain = $domain;
         $this->user = $user;
         $this->logger = $logger;
+
+        $connection->on('data', array($this, 'logReceived'));
+
     }
 
     public function getStack()
@@ -95,6 +98,7 @@ class ServerConnection
 
         if ($email === null) {
             $this->setState(static::STATE_READY);
+            $this->connection->emit('queue.empty', array($this->connection));
             return;
         }
 
@@ -271,9 +275,10 @@ class ServerConnection
         $this->connection->on($event, $callback);
     }
 
-    public function add($email)
+    public function add(MailboxUser $email)
     {
         $this->stack[spl_object_hash($email)] = $email;
+        $this->run();
     }
 
     public function count()
