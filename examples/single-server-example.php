@@ -11,17 +11,10 @@ $stream = stream_socket_client('tcp://' . $hosts[0] . ':25', $errNo, $errStr, 10
 $conn = new Connection($stream, $loop);
 
 $serverConnection = new ServerConnection($conn, 'flowsa.com', 'stephen', function ($str) {
-    echo $str."\n";
+    echo $str . "\n";
 });
 
-$conn->on('close',
-    function () use ($serverConnection) {
-        $serverConnection->rejectAll();
-        $serverConnection->setState(ServerConnection::STATE_CLOSED);
-    }
-);
-
-$conn->on('queue.empty', function ($conn) {
+$conn->on('queue.empty', function (Connection $conn) {
         $conn->close();
     });
 
@@ -34,10 +27,7 @@ foreach ($emails as $email) {
     $serverConnection->add(
         new MailboxUser($email, function ($user) {
             echo $user->getEmail() . ($user->exists() ? ' exists' : ' does not exist') . "\n";
-        }),
-        function (MailboxUser $email) { // Bind in a closure for the callback that occurs after an email is resolved
-            echo $email->getEmail() . ($email->exists() ? ' exists' : ' does not exist') . "\n";
-        }
+        })
     );
 }
 
