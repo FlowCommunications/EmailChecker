@@ -19,12 +19,23 @@ class MailboxUser
 
     protected $raw;
 
+    /**
+     * @var int
+     */
     protected $code;
 
     function __construct($email, $callback)
     {
         $this->email = $email;
         $this->callback = $callback;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCode()
+    {
+        return $this->code;
     }
 
     public function exists()
@@ -80,12 +91,14 @@ class MailboxUser
             }
         }
 
-        $this->callback($this);
+        $this->callback();
     }
 
     public function callback()
     {
-        call_user_func_array($this->callback, array($this));
+        if ($this->callback) {
+            call_user_func_array($this->callback, array($this));
+        }
     }
 
 

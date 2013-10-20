@@ -135,8 +135,6 @@ class ConnectionPool
 
     public function resolveConnection($domain)
     {
-        $self = $this;
-
         if (!isset($this->hostCache[$domain])) {
             getmxrr($domain, $hosts, $weights);
             $this->hostCache[$domain] = array_unique($hosts);
@@ -179,8 +177,6 @@ class ConnectionPool
 
                 $conn->on('close',
                     function () use ($self, $domain, $serverConnection) {
-                        $serverConnection->rejectAll();
-                        $serverConnection->setState(ServerConnection::STATE_CLOSED);
                         $self->unsetConnectionByDomain($domain);
                     }
                 );

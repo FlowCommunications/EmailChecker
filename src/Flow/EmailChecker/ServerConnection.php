@@ -40,6 +40,8 @@ class ServerConnection
 
     protected $address;
 
+    protected $buffer = '';
+
     public function __construct(Connection $connection = null, $domain, $user, $logger = null)
     {
         $this->connection = $connection;
@@ -49,77 +51,34 @@ class ServerConnection
 
         $connection->on('data', array($this, 'logReceived'));
 
+        $connection->on('data', array($this, 'buffer'));
+
+        $connection->on('close', array($this, 'onClose'));
     }
 
-    public function getStack()
+    public function buffer($data)
     {
-        return $this->stack;
-    }
+        $this->buffer .= $data;
 
-    public function run()
-    {
-        if ($this->isClosed()) {
-            return;
-        }
-
-        if ($this->isAsking()) {
-            return;
-        } else {
-            if ($this->isReady()) {
-                $this->ask();
-            } else {
-                if (!$this->isGreeting()) {
-                    $this->sayHello();
-                }
-            }
+        if (strpos($this->buffer, "\r\n") > -1) {
+            $this->connection->emit('message', array($this->buffer));
+            $this->buffer = '';
         }
     }
 
-    public function isClosed()
+    public function onClose()
     {
-        return $this->state === static::STATE_CLOSED;
+        $this->rejectAll();
+        $this->setState(ServerConnection::STATE_CLOSED);
     }
 
-    public function isAsking()
+    public function rejectAll()
     {
-        return $this->state === static::STATE_ASKING;
-    }
-
-    public function isReady()
-    {
-        return $this->state === static::STATE_READY;
-    }
-
-    public function ask()
-    {
-        $self = $this;
-        $email = $this->shift();
-        $connection = $this->connection;
-
-        if ($email === null) {
-            $this->setState(static::STATE_READY);
-            $this->connection->emit('queue.empty', array($this->connection));
-            return;
+        while ($email = $this->shift()) {
+            if (!$email->isResolved()) {
+                $email->setRaw('400 - Connection closed');
+            }
         }
-
-        $this->setState(static::STATE_ASKING);
-
-        $deferred = new Deferred();
-
-        $this->write("RCPT TO: <" . $email->getEmail() . ">\r\n");
-
-        $connection->once('data',
-            function ($data) use ($deferred) {
-                $deferred->resolve($data);
-            }
-        );
-
-        $deferred->promise()->then(function ($data) use ($self, $email) {
-                $email->setRaw($data);
-                $self->unsetProcessing($email);
-                $self->ask();
-            }
-        );
     }
 
     public function shift()
@@ -162,12 +121,102 @@ class ServerConnection
         return $this->address;
     }
 
-    public function log($data)
+    private function log($data)
     {
         if (is_callable($this->logger)) {
             $data = trim($data);
             call_user_func_array($this->logger, array($data));
         }
+    }
+
+    public function getStack()
+    {
+        return $this->stack;
+    }
+
+    public function on($event, $callback)
+    {
+        $this->connection->on($event, $callback);
+    }
+
+    public function add(MailboxUser $email)
+    {
+        $this->stack[spl_object_hash($email)] = $email;
+        $this->run();
+    }
+
+    public function run()
+    {
+        if ($this->isClosed()) {
+            return;
+        }
+
+        if ($this->isAsking()) {
+            return;
+        } else {
+            if ($this->isReady()) {
+                $this->ask();
+            } else {
+                if (!$this->isGreeting()) {
+                    $this->sayHello();
+                }
+            }
+        }
+    }
+
+    public function isClosed()
+    {
+        return $this->state === static::STATE_CLOSED;
+    }
+
+    public function isAsking()
+    {
+        return $this->state === static::STATE_ASKING;
+    }
+
+    public function isReady()
+    {
+        return $this->state === static::STATE_READY;
+    }
+
+    public function ask()
+    {
+        $self = $this;
+        $email = $this->shift();
+
+        if ($email === null) {
+            $this->setState(static::STATE_READY);
+            $this->connection->emit('queue.empty', array($this->connection));
+            return;
+        }
+
+        $this->setState(static::STATE_ASKING);
+
+        $this->send("RCPT TO: <" . $email->getEmail() . ">\r\n")->then(function ($data) use ($self, $email) {
+                $email->setRaw($data);
+                $self->unsetProcessing($email);
+                $self->ask();
+            }
+        );
+    }
+
+    /**
+     * @param $data
+     * @return \React\Promise\DeferredPromise
+     */
+    public function send($data)
+    {
+        $deferred = new Deferred();
+
+        $this->connection->once('message',
+            function ($data) use ($deferred) {
+                $deferred->resolve($data);
+            }
+        );
+
+        $this->write($data);
+
+        return $deferred->promise();
     }
 
     public function write($str)
@@ -206,35 +255,17 @@ class ServerConnection
 
         $this->connection->once('data',
             function ($data, $conn) use ($deferred) {
-                $deferred->resolve(array($data, $conn));
+                $deferred->resolve($data);
             }
         );
 
         $deferred->promise()
             ->then(function ($data) use ($connection, $self) {
-                    $deferred = new Deferred();
-
-                    $self->write("HELO " . $self->getDomain() . "\r\n");
-                    $connection->once('data',
-                        function ($data) use ($deferred) {
-                            $deferred->resolve($data);
-                        }
-                    );
-
-                    return $deferred->promise();
+                    return $self->send("HELO " . $self->getDomain() . "\r\n");
                 }
             )
             ->then(function ($data) use ($connection, $self) {
-                    $deferred = new Deferred();
-
-                    $self->write("MAIL FROM: <" . $self->getUser() . "@" . $self->getDomain() . ">\r\n");
-                    $connection->once('data',
-                        function ($data) use ($deferred) {
-                            $deferred->resolve($data);
-                        }
-                    );
-
-                    return $deferred->promise();
+                    return $self->send("MAIL FROM: <" . $self->getUser() . "@" . $self->getDomain() . ">\r\n");
                 }
             )
             ->then(function ($data) use ($connection, $self) {
@@ -259,26 +290,6 @@ class ServerConnection
     public function getUser()
     {
         return $this->user;
-    }
-
-    public function rejectAll()
-    {
-        while ($email = $this->shift()) {
-            if (!$email->isResolved()) {
-                $email->setRaw('500 - Connection closed');
-            }
-        }
-    }
-
-    public function on($event, $callback)
-    {
-        $this->connection->on($event, $callback);
-    }
-
-    public function add(MailboxUser $email)
-    {
-        $this->stack[spl_object_hash($email)] = $email;
-        $this->run();
     }
 
     public function count()
