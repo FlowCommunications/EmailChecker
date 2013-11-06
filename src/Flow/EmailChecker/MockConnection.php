@@ -14,7 +14,7 @@ class MockConnection extends ServerConnection
     {
         $this->onClose();
     }
-    
+
     public function getAddress()
     {
         return '0.0.0.0';

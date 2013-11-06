@@ -77,12 +77,12 @@ class ConnectionPool
             if (time() - $connection->lastAlive() > $this->keepAlive) {
                 $this->log($key . ' :: Server closed due to inactivity');
                 $connection->close();
+                echo ">> ".($connection->isClosed() ? 'closed' : 'still open');
             }
 
             if ($connection->isClosed()) {
                 $this->unsetConnectionByDomain($connection->getDomain());
             }
-
         }
 
         $this->log('Queue: ' . $count);
@@ -128,6 +128,7 @@ class ConnectionPool
 
     public function unsetConnectionByDomain($domain)
     {
+        echo "unsert by domain: $domain\n";
         unset($this->connections[$domain]);
     }
 
@@ -194,11 +195,11 @@ class ConnectionPool
             }
 
             if (!$stream) {
-                $serverConnection = new MockConnection(null, $this->fromDomain, $this->fromUser, $this->logger);
+                $serverConnection = new MockConnection(null, $domain, $this->fromDomain, $this->fromUser, $this->logger);
             } else {
                 $conn = new Connection($stream, $this->loop);
 
-                $serverConnection = new ServerConnection($conn, $this->fromDomain, $this->fromUser, $this->logger);
+                $serverConnection = new ServerConnection($conn, $domain, $this->fromDomain, $this->fromUser, $this->logger);
 
             }
 

@@ -10,7 +10,7 @@ getmxrr('gmail.com', $hosts);
 $stream = stream_socket_client('tcp://' . $hosts[0] . ':25', $errNo, $errStr, 10);
 $conn = new Connection($stream, $loop);
 
-$serverConnection = new ServerConnection($conn, 'flowsa.com', 'stephen', function ($str) {
+$serverConnection = new ServerConnection($conn, 'gmail.com', 'flowsa.com', 'stephen', function ($str) {
     echo $str . "\n";
 });
 

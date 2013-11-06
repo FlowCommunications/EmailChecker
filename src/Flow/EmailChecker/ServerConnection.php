@@ -21,7 +21,9 @@ class ServerConnection
      */
     protected $connection;
 
-    protected $user;
+    protected $fromUser;
+
+    protected $fromDomain;
 
     protected $domain;
 
@@ -44,11 +46,12 @@ class ServerConnection
 
     protected $lastAlive;
 
-    public function __construct(Connection $connection = null, $domain, $user, $logger = null)
+    public function __construct(Connection $connection = null, $domain, $fromDomain, $fromUser, $logger = null)
     {
         $this->connection = $connection;
+        $this->fromDomain = $fromDomain;
+        $this->fromUser = $fromUser;
         $this->domain = $domain;
-        $this->user = $user;
         $this->logger = $logger;
 
         $this->lastAlive = time();
@@ -274,10 +277,10 @@ class ServerConnection
 
         $this->promiseMessage()
             ->then(function ($data) use ($self) {
-                    return $self->write("HELO " . $self->getDomain() . "\r\n")->promiseMessage();
+                    return $self->write("HELO " . $self->getFromDomain() . "\r\n")->promiseMessage();
                 }
             )->then(function ($data) use ($self) {
-                    return $self->write("MAIL FROM: <" . $self->getUser() . "@" . $self->getDomain() . ">\r\n"
+                    return $self->write("MAIL FROM: <" . $self->getFromUser() . "@" . $self->getFromDomain() . ">\r\n"
                     )->promiseMessage();
                 }
             )
@@ -291,17 +294,25 @@ class ServerConnection
     /**
      * @return mixed
      */
-    public function getDomain()
+    public function getFromDomain()
     {
-        return $this->domain;
+        return $this->fromDomain;
     }
 
     /**
      * @return mixed
      */
-    public function getUser()
+    public function getFromUser()
     {
-        return $this->user;
+        return $this->fromUser;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getDomain()
+    {
+        return $this->domain;
     }
 
     public function count()
