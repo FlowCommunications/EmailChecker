@@ -89,7 +89,9 @@ class ServerConnection
 
     public function close()
     {
-        $this->connection->close();
+        if ($this->connection) {
+            $this->connection->close();
+        }
     }
 
     public function rejectAll()
