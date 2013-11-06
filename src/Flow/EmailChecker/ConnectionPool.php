@@ -32,6 +32,8 @@ class ConnectionPool
 
     protected $concurrency = 10;
 
+    protected $keepAlive = 60;
+
     /**
      * @var callable
      */
@@ -44,6 +46,14 @@ class ConnectionPool
         $this->fromUser = $fromUser;
         $this->queuer = $queuer;
         $this->logger = $logger;
+    }
+
+    /**
+     * @param int $stayAlive
+     */
+    public function setStayAlive($keepAlive)
+    {
+        $this->keepAlive = $keepAlive;
     }
 
     public function setConcurrency($num)
@@ -63,6 +73,13 @@ class ConnectionPool
             }
         }
 
+        foreach ($this->connections as $key => $connection) {
+            if (time() - $connection->lastAlive() > $this->keepAlive) {
+                $this->log($key.' :: Server closed due to inactivity');
+                $connection->close();
+            }
+        }
+
         $this->log('Queue: ' . $count);
         $this->log('Connections: ' . $this->connectionsCount());
     }
@@ -78,6 +95,13 @@ class ConnectionPool
         return $total;
     }
 
+    public function drain()
+    {
+        if ($this->count() === 0 && $this->processingCount() === 0) {
+            $this->loop->stop();
+        }
+    }
+
     public function processingCount()
     {
         $total = 0;
@@ -87,13 +111,6 @@ class ConnectionPool
         }
 
         return $total;
-    }
-
-    public function drain()
-    {
-        if ($this->count() === 0 && $this->processingCount() === 0) {
-            $this->loop->stop();
-        }
     }
 
     public function log($data)

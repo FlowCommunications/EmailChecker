@@ -42,6 +42,8 @@ class ServerConnection
 
     protected $buffer = '';
 
+    protected $lastAlive;
+
     public function __construct(Connection $connection = null, $domain, $user, $logger = null)
     {
         $this->connection = $connection;
@@ -49,11 +51,24 @@ class ServerConnection
         $this->user = $user;
         $this->logger = $logger;
 
+        $this->lastAlive = time();
+
         if ($connection) {
+            $connection->on('data', array($this, 'updateAlive'));
             $connection->on('data', array($this, 'logReceived'));
             $connection->on('data', array($this, 'buffer'));
             $connection->on('close', array($this, 'onClose'));
         }
+    }
+
+    public function lastAlive()
+    {
+        return $this->lastAlive;
+    }
+
+    public function updateAlive()
+    {
+        $this->lastAlive = time();
     }
 
     public function buffer($data)
@@ -70,6 +85,11 @@ class ServerConnection
     {
         $this->rejectAll();
         $this->setState(ServerConnection::STATE_CLOSED);
+    }
+
+    public function close()
+    {
+        $this->connection->close();
     }
 
     public function rejectAll()
