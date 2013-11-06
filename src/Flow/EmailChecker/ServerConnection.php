@@ -87,11 +87,6 @@ class ServerConnection
         $this->setState(ServerConnection::STATE_CLOSED);
     }
 
-    public function close()
-    {
-        $this->connection->close();
-    }
-
     public function rejectAll()
     {
         while ($email = $this->shift()) {
@@ -147,6 +142,11 @@ class ServerConnection
             $data = trim($data);
             call_user_func_array($this->logger, array($data));
         }
+    }
+
+    public function close()
+    {
+        $this->connection->close();
     }
 
     public function getStack()

@@ -75,7 +75,7 @@ class ConnectionPool
 
         foreach ($this->connections as $key => $connection) {
             if (time() - $connection->lastAlive() > $this->keepAlive) {
-                $this->log($key.' :: Server closed due to inactivity');
+                $this->log($key . ' :: Server closed due to inactivity');
                 $connection->close();
             }
 
@@ -124,6 +124,11 @@ class ConnectionPool
             $data = trim($data);
             call_user_func_array($this->logger, array($data));
         }
+    }
+
+    public function unsetConnectionByDomain($domain)
+    {
+        unset($this->connections[$domain]);
     }
 
     public function connectionsCount()
@@ -204,11 +209,6 @@ class ConnectionPool
         return $serverConnection;
     }
 
-    public function unsetConnectionByDomain($domain)
-    {
-        unset($this->connections[$domain]);
-    }
-
     public function unsetConnection($emailConnection)
     {
         foreach ($this->connections as $k => $connection) {
@@ -217,6 +217,5 @@ class ConnectionPool
             }
         }
     }
-
 
 }
