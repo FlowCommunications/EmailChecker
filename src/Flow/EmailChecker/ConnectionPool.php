@@ -78,6 +78,11 @@ class ConnectionPool
                 $this->log($key.' :: Server closed due to inactivity');
                 $connection->close();
             }
+
+            if ($connection->isClosed()) {
+                $this->unsetConnectionByDomain($connection->getDomain());
+            }
+
         }
 
         $this->log('Queue: ' . $count);
@@ -190,13 +195,6 @@ class ConnectionPool
 
                 $serverConnection = new ServerConnection($conn, $this->fromDomain, $this->fromUser, $this->logger);
 
-                $self = $this;
-
-                $conn->on('close',
-                    function () use ($self, $domain, $serverConnection) {
-                        $self->unsetConnectionByDomain($domain);
-                    }
-                );
             }
 
             $this->connections[$domain] = $serverConnection;

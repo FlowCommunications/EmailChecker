@@ -12,8 +12,7 @@ class MockConnection extends ServerConnection
 
     public function close()
     {
-        $this->rejectAll();
-        $this->setState(ServerConnection::STATE_CLOSED);
+        $this->onClose();
     }
 
 }
